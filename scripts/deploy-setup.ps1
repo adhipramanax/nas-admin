@@ -35,7 +35,8 @@ if (-not $token) {
 
 Write-Host "`n==== 3. Setup di TrueNAS via SSH ====" -ForegroundColor Cyan
 $script = (Get-Content 'scripts\nas-setup.sh' -Raw) -replace "`r", ''
-$script | ssh -i $SshKey -o StrictHostKeyChecking=accept-new $Nas "bash -s -- $token"
+# PowerShell menambahkan CRLF saat mem-pipe ke program lain -> buang \r di sisi NAS
+$script | ssh -i $SshKey -o StrictHostKeyChecking=accept-new $Nas "tr -d '\r' | bash -s -- $token"
 if ($LASTEXITCODE -ne 0) { throw 'Setup di NAS gagal - lihat pesan di atas' }
 
 Write-Host "`nSelesai. Buka http://192.168.110.10:8002" -ForegroundColor Green
