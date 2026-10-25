@@ -3,6 +3,7 @@ import { Bot, Download, KeyRound, Server } from 'lucide-react';
 import { api, useApi } from '../lib/api.js';
 import { dateTime } from '../lib/format.js';
 import { Badge, Dot, ErrorBox, Field, Loading, PageHeader, Spinner, toast } from '../components/ui.jsx';
+import TwoFactorCard from '../components/TwoFactorCard.jsx';
 
 function PasswordForm() {
   const [f, setF] = useState({ currentPassword: '', newPassword: '', confirm: '' });
@@ -90,8 +91,9 @@ export default function SettingsPage() {
       <PageHeader title="Pengaturan" />
       <div className="grid gap-5 lg:grid-cols-2">
         <div className="space-y-5">
-          <AiSettings settings={data} reload={reload} />
+          <TwoFactorCard />
           <PasswordForm />
+          <AiSettings settings={data} reload={reload} />
         </div>
         <div className="space-y-5">
           <div className="card space-y-3 p-4">

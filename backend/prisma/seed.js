@@ -145,6 +145,19 @@ async function main() {
     console.log(`[seed] Akun admin "${username}" dibuat`);
   }
 
+  // Darurat: matikan 2FA user tertentu (HP hilang & kode cadangan hilang).
+  // Isi RESET_2FA_USER=<username> di .env, restart, lalu hapus lagi baris tersebut.
+  if (process.env.RESET_2FA_USER) {
+    const u = await prisma.user.findUnique({ where: { username: process.env.RESET_2FA_USER } });
+    if (u) {
+      await prisma.user.update({
+        where: { id: u.id },
+        data: { totpEnabled: false, totpSecretEnc: null, totpLastStep: null, recoveryCodes: [] },
+      });
+      console.log(`[seed] 2FA untuk "${u.username}" DINONAKTIFKAN (RESET_2FA_USER). Hapus variabel ini dari .env!`);
+    }
+  }
+
   if ((await prisma.project.count()) === 0 && process.env.SEED_PROJECTS !== 'false') {
     for (const { _port, folder, ...p } of PROJECTS) {
       const created = await prisma.project.create({ data: p });

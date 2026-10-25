@@ -12,6 +12,13 @@ model User {
   id           Int      @id @default(autoincrement())
   username     String   @unique
   passwordHash String
+  /// Rahasia TOTP (Google Authenticator), terenkripsi AES-256-GCM
+  totpSecretEnc String?
+  totpEnabled   Boolean  @default(false)
+  /// Time-step TOTP terakhir yang dipakai (mencegah kode dipakai ulang)
+  totpLastStep  Int?
+  /// Hash SHA-256 kode cadangan yang belum dipakai
+  recoveryCodes String[] @default([])
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }

@@ -108,6 +108,26 @@ Contoh perintah ke AI:
 
 ---
 
+## Verifikasi 2 langkah (Google Authenticator)
+
+1. Login → **Pengaturan → Verifikasi 2 langkah → Aktifkan**.
+2. Scan QR dengan Google Authenticator (atau Microsoft Authenticator / Authy), masukkan kode 6 digit.
+3. **Simpan 10 kode cadangan** yang muncul (unduh .txt / password manager). Setiap kode hanya berlaku sekali.
+
+Sesudahnya, login = password + kode 6 digit. Kode berganti setiap 30 detik dan tidak butuh internet,
+tapi **jam NAS dan HP harus sinkron** (toleransi ±30 detik).
+
+**HP hilang?** Login pakai salah satu kode cadangan → nonaktifkan 2FA → aktifkan lagi dengan HP baru.
+
+**HP dan kode cadangan hilang?** Reset lewat NAS:
+
+```bash
+cd /mnt/data/app/web/nasAdmin
+echo "RESET_2FA_USER=panji" >> .env && docker compose up -d
+# login hanya dengan password, aktifkan lagi 2FA, lalu HAPUS baris RESET_2FA_USER dari .env
+sed -i '/^RESET_2FA_USER=/d' .env && docker compose up -d
+```
+
 ## Update
 
 ```bash
