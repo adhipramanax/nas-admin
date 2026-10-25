@@ -1,0 +1,53 @@
+name: Deploy NAS Admin
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-nas-admin
+  cancel-in-progress: false
+
+env:
+  DEPLOY_DIR: /mnt/data/app/web/nasAdmin
+  APP_PORT: 8002
+
+jobs:
+  deploy:
+    name: Build & deploy ke TrueNAS
+    runs-on: [self-hosted, nas-admin]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Sinkronkan source ke folder deploy
+        run: |
+          mkdir -p "$DEPLOY_DIR"
+          # .env & data di NAS tidak pernah ditimpa/dihapus
+          rsync -a --delete \
+            --exclude '.git/' --exclude '.env' --exclude 'data/' \
+            ./ "$DEPLOY_DIR/"
+          test -f "$DEPLOY_DIR/.env" || { echo "::error::$DEPLOY_DIR/.env belum ada"; exit 1; }
+
+      - name: Build & jalankan container
+        working-directory: ${{ env.DEPLOY_DIR }}
+        run: |
+          docker compose build --pull app
+          docker compose up -d --remove-orphans
+
+      - name: Health check
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS "http://127.0.0.1:${APP_PORT}/api/health" >/dev/null; then
+              echo "NAS Admin sehat di port ${APP_PORT}"; exit 0
+            fi
+            sleep 3
+          done
+          echo "::error::Health check gagal"
+          docker compose -f "$DEPLOY_DIR/docker-compose.yml" logs --tail 80 app
+          exit 1
+
+      - name: Bersihkan image lama
+        if: always()
+        run: docker image prune -f >/dev/null || true

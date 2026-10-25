@@ -1,0 +1,73 @@
+name: nas-admin
+
+services:
+  app:
+    build: .
+    container_name: nas-admin-app
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://nasadmin:${DB_PASSWORD}@db:5432/nasadmin
+      DOCKER_HOST: tcp://socket-proxy:2375
+      HOST_MOUNTS: /mnt/data:/host/data
+      SELF_COMPOSE_PROJECT: nas-admin
+    ports:
+      - "${APP_PORT:-8002}:3000"
+    volumes:
+      # Read-only: untuk cek lokasi project & kapasitas disk
+      - /mnt/data:/host/data:ro
+    extra_hosts:
+      # Agar bisa cek port/health web lain di NAS & menghubungi Ollama
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      db:
+        condition: service_healthy
+      socket-proxy:
+        condition: service_started
+    networks: [default, internal]
+
+  db:
+    image: postgres:16-alpine
+    container_name: nas-admin-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: nasadmin
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: nasadmin
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nasadmin -d nasadmin"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [internal]
+
+  # Perantara aman ke Docker: hanya izinkan baca container/info
+  # + start/stop/restart. Tidak bisa create/delete container, image, volume, exec.
+  socket-proxy:
+    image: lscr.io/linuxserver/socket-proxy:latest
+    container_name: nas-admin-socket-proxy
+    restart: unless-stopped
+    environment:
+      CONTAINERS: 1
+      INFO: 1
+      VERSION: 1
+      PING: 1
+      POST: 0
+      ALLOW_START: 1
+      ALLOW_STOP: 1
+      ALLOW_RESTARTS: 1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    read_only: true
+    tmpfs:
+      - /run
+    networks: [internal]
+
+volumes:
+  pgdata:
+
+networks:
+  internal:
+    internal: true

@@ -1,0 +1,103 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  username     String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+/// Satu project / layanan yang berjalan di NAS
+model Project {
+  id             Int          @id @default(autoincrement())
+  name           String
+  slug           String       @unique
+  description    String?
+  /// web | app | infra | database | tool | lainnya
+  category       String       @default("web")
+  /// aktif | development | maintenance | nonaktif | arsip
+  status         String       @default("aktif")
+  stack          String?
+  /// Path di NAS, mis. /mnt/data/app/web/basinang
+  location       String?
+  repoUrl        String?
+  branch         String?
+  localUrl       String?
+  publicUrl      String?
+  /// URL yang dicek otomatis oleh health checker (dari dalam container dashboard)
+  healthUrl      String?
+  /// Label com.docker.compose.project untuk menautkan container secara otomatis
+  composeProject String?
+  /// Nama container tambahan yang ditautkan manual
+  containers     String[]     @default([])
+  tags           String[]     @default([])
+  /// Dokumentasi lengkap dalam Markdown
+  docs           String?
+  notes          String?
+  pinned         Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  credentials    Credential[]
+  ports          Port[]
+}
+
+/// Akses admin. Password disimpan terenkripsi AES-256-GCM.
+model Credential {
+  id        Int      @id @default(autoincrement())
+  projectId Int
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  label     String
+  url       String?
+  username  String?
+  secretEnc String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([projectId])
+}
+
+/// Port yang didokumentasikan manual (mis. SSH, TrueNAS UI, atau port yang tidak lewat Docker)
+model Port {
+  id          Int      @id @default(autoincrement())
+  port        Int
+  protocol    String   @default("tcp")
+  service     String
+  description String?
+  projectId   Int?
+  project     Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([port])
+}
+
+/// Riwayat aksi penting (aksi container, perubahan oleh AI agent, dll)
+model ActivityLog {
+  id        Int      @id @default(autoincrement())
+  /// user | ai
+  actor     String
+  action    String
+  target    String?
+  detail    String?
+  success   Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+/// Pengaturan runtime (mis. model Ollama)
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
